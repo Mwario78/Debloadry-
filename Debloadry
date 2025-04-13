@@ -1,0 +1,1793 @@
+mkdir -p AndroidDebloaterApp
+cd AndroidDebloaterApp && mkdir -p app/src/main/java/com/deblooter app/src/main/res/layout app/src/main/res/values
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    ext.kotlin_version = '1.6.10'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.1.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}include ':app'
+rootProject.name = "Android Debloater"plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
+
+android {
+    compileSdkVersion 33
+    
+    defaultConfig {
+        applicationId "com.debloater"
+        minSdkVersion 23
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+        
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.4.1'
+    implementation 'com.google.android.material:material:1.5.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.1'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.4.1'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+    implementation 'com.github.bumptech.glide:glide:4.13.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.13.0'
+    
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+}<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.debloater">
+
+    <!-- Needed to query package information -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    
+    <!-- Needed to uninstall packages -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    
+    <!-- Needed for device administrator features -->
+    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
+    
+    <!-- Internet permission is needed to check app details online -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AndroidDebloater">
+        
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <activity
+            android:name=".AppDetailsActivity"
+            android:exported="false" />
+        
+        <receiver
+            android:name=".DeviceAdminReceiver"
+            android:description="@string/device_admin_description"
+            android:label="@string/device_admin_label"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_policies" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest><resources>
+    <string name="app_name">Android Debloater</string>
+    <string name="search_hint">Search apps…</string>
+    <string name="filter_all">All Apps</string>
+    <string name="filter_system">System Apps</string>
+    <string name="filter_user">User Apps</string>
+    <string name="filter_admin">Admin Apps</string>
+    <string name="filter_disabled">Disabled Apps</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="disable">Disable</string>
+    <string name="enable">Enable</string>
+    <string name="details">Details</string>
+    <string name="app_info">App Info</string>
+    <string name="permissions">Permissions</string>
+    <string name="package_name">Package Name</string>
+    <string name="version">Version</string>
+    <string name="install_date">Install Date</string>
+    <string name="app_size">App Size</string>
+    <string name="confirm_uninstall">Are you sure you want to uninstall this app?</string>
+    <string name="confirm_disable">Are you sure you want to disable this app?</string>
+    <string name="warning_system_app">Warning: This is a system app. Uninstalling it might cause issues with your device.</string>
+    <string name="warning_admin_app">Warning: This is an admin app. You need to deactivate it as device admin first.</string>
+    <string name="success_uninstall">Successfully uninstalled</string>
+    <string name="success_disable">Successfully disabled</string>
+    <string name="success_enable">Successfully enabled</string>
+    <string name="error_uninstall">Failed to uninstall</string>
+    <string name="error_disable">Failed to disable</string>
+    <string name="device_admin_label">Device Admin</string>
+    <string name="device_admin_description">Required to manage device administrator apps</string>
+    <string name="loading">Loading…</string>
+    <string name="no_apps_found">No apps found</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+</resources><resources>
+    <color name="primary">#2196F3</color>
+    <color name="primary_dark">#1976D2</color>
+    <color name="primary_light">#BBDEFB</color>
+    <color name="accent">#FF4081</color>
+    <color name="primary_text">#212121</color>
+    <color name="secondary_text">#757575</color>
+    <color name="icons">#FFFFFF</color>
+    <color name="divider">#BDBDBD</color>
+    <color name="warning">#FFA000</color>
+    <color name="danger">#F44336</color>
+    <color name="success">#4CAF50</color>
+    <color name="background">#FFFFFF</color>
+    <color name="system_app">#E3F2FD</color>
+    <color name="user_app">#F5F5F5</color>
+    <color name="admin_app">#FFF3E0</color>
+    <color name="disabled_app">#ECEFF1</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+</resources><resources>
+    <!-- Base application theme. -->
+    <style name="Theme.AndroidDebloater" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorSecondaryVariant">@color/accent</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/primary_dark</item>
+        <!-- Text colors -->
+        <item name="android:textColorPrimary">@color/primary_text</item>
+        <item name="android:textColorSecondary">@color/secondary_text</item>
+        <!-- Background colors -->
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+</resources>mkdir -p AndroidDebloaterApp/app/src/main/res/xml<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <force-lock />
+        <wipe-data />
+        <reset-password />
+        <limit-password />
+        <watch-login />
+        <expire-password />
+        <encrypted-storage />
+        <disable-camera />
+    </uses-policies>
+</device-admin><?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/Theme.AndroidDebloater">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:popupTheme="@style/Theme.AndroidDebloater" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/search_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            app:startIconDrawable="@android:drawable/ic_menu_search"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/search_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/search_hint"
+                android:inputType="text" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tab_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:tabMode="scrollable">
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/filter_all" />
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/filter_system" />
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/filter_user" />
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/filter_admin" />
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/filter_disabled" />
+
+        </com.google.android.material.tabs.TabLayout>
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="8dp"
+                tools:listitem="@layout/item_app" />
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/loading_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+
+    </FrameLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout><?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:id="@+id/app_icon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="16dp"
+                tools:src="@android:drawable/sym_def_app_icon"
+                android:contentDescription="App icon" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/app_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceHeadline6"
+                    android:textSize="16sp"
+                    tools:text="App Name" />
+
+                <TextView
+                    android:id="@+id/app_package"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBody2"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    tools:text="com.example.app" />
+
+                <TextView
+                    android:id="@+id/app_version"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBody2"
+                    android:textColor="?android:attr/textColorSecondary"
+                    tools:text="Version 1.0" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/app_type"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_tag"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            tools:text="System App" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_uninstall"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/uninstall"
+                android:textColor="@color/danger"
+                app:strokeColor="@color/danger"
+                android:layout_marginEnd="4dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_disable"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/disable"
+                android:textColor="@color/warning"
+                app:strokeColor="@color/warning"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_details"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/details"
+                android:layout_marginStart="4dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>mkdir -p AndroidDebloaterApp/app/src/main/res/drawable<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="4dp" />
+    <solid android:color="#E3F2FD" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/primary" />
+</shape><?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".AppDetailsActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/Theme.AndroidDebloater">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:popupTheme="@style/Theme.AndroidDebloater" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:id="@+id/app_icon"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_marginEnd="16dp"
+                    tools:src="@android:drawable/sym_def_app_icon"
+                    android:contentDescription="App icon" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/app_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceHeadline5"
+                        tools:text="App Name" />
+
+                    <TextView
+                        android:id="@+id/app_package"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceBody1"
+                        android:textColor="?android:attr/textColorSecondary"
+                        tools:text="com.example.app" />
+
+                    <TextView
+                        android:id="@+id/app_type"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_tag"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="System App" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_info"
+                        android:textAppearance="?attr/textAppearanceHeadline6"
+                        android:layout_marginBottom="8dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/version"
+                            android:textStyle="bold"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:id="@+id/app_version"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            tools:text="1.0 (Build 123)" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/install_date"
+                            android:textStyle="bold"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:id="@+id/app_install_date"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            tools:text="January 1, 2022" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/app_size"
+                            android:textStyle="bold"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:id="@+id/app_size"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            tools:text="24.5 MB" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/permissions"
+                        android:textAppearance="?attr/textAppearanceHeadline6"
+                        android:layout_marginBottom="8dp" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/permissions_recycler_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:id="@+id/warning_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/warning"
+                android:background="#FFECB3"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                tools:text="@string/warning_system_app"
+                tools:visibility="visible" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_uninstall"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/uninstall"
+                    android:backgroundTint="@color/danger"
+                    android:textColor="@color/white"
+                    android:layout_marginEnd="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_disable"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/disable"
+                    android:backgroundTint="@color/warning"
+                    android:textColor="@color/white"
+                    android:layout_marginStart="8dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout><?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/permission_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="8dp"
+        android:src="@android:drawable/ic_menu_info_details"
+        android:contentDescription="Permission icon" />
+
+    <TextView
+        android:id="@+id/permission_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        tools:text="android.permission.INTERNET" />
+
+</LinearLayout>mkdir -p AndroidDebloaterApp/app/src/main/java/com/debloater/modelpackage com.debloater.model
+
+import android.graphics.drawable.Drawable
+import java.util.Date
+
+/**
+ * Data class representing information about an installed application
+ */
+data class AppInfo(
+    val packageName: String,
+    val appName: String,
+    val versionName: String,
+    val versionCode: Long,
+    val icon: Drawable,
+    val installDate: Date,
+    val appSize: Long,
+    val isSystemApp: Boolean,
+    val isAdminApp: Boolean,
+    val isEnabled: Boolean,
+    val permissions: List<String> = emptyList()
+) {
+    enum class AppType {
+        SYSTEM,
+        USER,
+        ADMIN,
+        DISABLED
+    }
+    
+    fun getAppType(): AppType {
+        return when {
+            isAdminApp -> AppType.ADMIN
+            !isEnabled -> AppType.DISABLED
+            isSystemApp -> AppType.SYSTEM
+            else -> AppType.USER
+        }
+    }
+}mkdir -p AndroidDebloaterApp/app/src/main/java/com/debloater/repositorypackage com.debloater.repository
+
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.text.format.Formatter
+import com.debloater.DeviceAdminReceiver
+import com.debloater.model.AppInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.*
+
+/**
+ * Repository class that provides methods to interact with installed applications
+ */
+class AppRepository(private val context: Context) {
+
+    private val packageManager: PackageManager = context.packageManager
+    private val devicePolicyManager: DevicePolicyManager = 
+        context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+    private val deviceAdminComponent: ComponentName = ComponentName(context, DeviceAdminReceiver::class.java)
+
+    /**
+     * Returns a list of all installed applications on the device
+     */
+    suspend fun getAllApps(): List<AppInfo> = withContext(Dispatchers.IO) {
+        val installedPackages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getInstalledPackages(PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+        }
+
+        // Filter out the current app
+        val filteredPackages = installedPackages.filter { it.packageName != context.packageName }
+        
+        return@withContext filteredPackages.map { packageInfo ->
+            mapToAppInfo(packageInfo)
+        }
+    }
+
+    /**
+     * Checks if the given package is a device administrator
+     */
+    fun isDeviceAdmin(packageName: String): Boolean {
+        val activeAdmins = devicePolicyManager.activeAdmins ?: return false
+        return activeAdmins.any { 
+            it.packageName == packageName 
+        }
+    }
+
+    /**
+     * Attempts to uninstall a package
+     */
+    fun uninstallPackage(packageName: String) {
+        val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
+            data = Uri.parse("package:$packageName")
+            putExtra(Intent.EXTRA_RETURN_RESULT, true)
+        }
+        context.startActivity(intent)
+    }
+
+    /**
+     * Attempts to disable a package
+     */
+    fun disablePackage(packageName: String): Boolean {
+        return try {
+            val devicePolicyManager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            
+            // Check if this app is a device admin
+            if (isDeviceAdmin(packageName)) {
+                val adminComponent = getDeviceAdminComponent(packageName)
+                if (adminComponent != null) {
+                    devicePolicyManager.removeActiveAdmin(adminComponent)
+                }
+            }
+            
+            // Now try to disable the package
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // For Android 11+, we need more aggressive methods
+                try {
+                    val pm = context.packageManager
+                    pm.setApplicationEnabledSetting(
+                        packageName,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+                        0
+                    )
+                    true
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    false
+                }
+            } else {
+                val pm = context.packageManager
+                pm.setApplicationEnabledSetting(
+                    packageName,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+                    0
+                )
+                true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * Attempts to enable a disabled package
+     */
+    fun enablePackage(packageName: String): Boolean {
+        return try {
+            val pm = context.packageManager
+            pm.setApplicationEnabledSetting(
+                packageName,
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                0
+            )
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * Check if device admin access is active for this app
+     */
+    fun isDeviceAdminActive(): Boolean {
+        return devicePolicyManager.isAdminActive(deviceAdminComponent)
+    }
+
+    /**
+     * Get details for a specific app by its package name
+     */
+    suspend fun getAppDetails(packageName: String): AppInfo? = withContext(Dispatchers.IO) {
+        try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(
+                    (PackageManager.GET_PERMISSIONS).toLong()))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            }
+            mapToAppInfo(packageInfo)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+    
+    /**
+     * Maps a PackageInfo object to our AppInfo model
+     */
+    private fun mapToAppInfo(packageInfo: PackageInfo): AppInfo {
+        val applicationInfo = packageInfo.applicationInfo
+        val appName = applicationInfo.loadLabel(packageManager).toString()
+        val icon = applicationInfo.loadIcon(packageManager)
+        val versionName = packageInfo.versionName ?: ""
+        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            packageInfo.versionCode.toLong()
+        }
+        
+        val installDate = Date(packageInfo.firstInstallTime)
+        val isSystemApp = (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+        val isEnabled = applicationInfo.enabled
+        
+        // Get app size
+        val appSize = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val storageStatsManager = context.getSystemService(Context.STORAGE_STATS_SERVICE)
+                0L // In a real app, we would calculate this properly
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            0L
+        }
+        
+        // Get permissions
+        val permissions = packageInfo.requestedPermissions?.toList() ?: emptyList()
+        
+        // Check if it's a device admin app
+        val isAdminApp = isDeviceAdmin(packageInfo.packageName)
+
+        return AppInfo(
+            packageName = packageInfo.packageName,
+            appName = appName,
+            versionName = versionName,
+            versionCode = versionCode,
+            icon = icon,
+            installDate = installDate,
+            appSize = appSize,
+            isSystemApp = isSystemApp,
+            isAdminApp = isAdminApp,
+            isEnabled = isEnabled,
+            permissions = permissions
+        )
+    }
+    
+    /**
+     * Gets the ComponentName for a device admin package
+     */
+    private fun getDeviceAdminComponent(packageName: String): ComponentName? {
+        return try {
+            // This is a simplification; in reality we would need to find the exact
+            // receiver that's registered as device admin
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(
+                    PackageManager.GET_RECEIVERS.toLong()
+                ))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, PackageManager.GET_RECEIVERS)
+            }
+            
+            // For simplicity, we'll just use the first receiver we find
+            val receivers = packageInfo.receivers ?: return null
+            if (receivers.isNotEmpty()) {
+                ComponentName(packageName, receivers[0].name)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+    
+    /**
+     * Formats the app size into a human-readable string
+     */
+    fun formatSize(size: Long): String {
+        return Formatter.formatFileSize(context, size)
+    }
+}package com.debloater
+
+import android.app.admin.DeviceAdminReceiver
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+
+/**
+ * This class is responsible for handling device admin privileges
+ * which are needed to manage device admin apps
+ */
+class DeviceAdminReceiver : DeviceAdminReceiver() {
+
+    override fun onEnabled(context: Context, intent: Intent) {
+        super.onEnabled(context, intent)
+        Toast.makeText(context, "Device Admin enabled", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDisabled(context: Context, intent: Intent) {
+        super.onDisabled(context, intent)
+        Toast.makeText(context, "Device Admin disabled", Toast.LENGTH_SHORT).show()
+    }
+}mkdir -p AndroidDebloaterApp/app/src/main/java/com/debloater/viewmodelpackage com.debloater.viewmodel
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import com.debloater.model.AppInfo
+import com.debloater.repository.AppRepository
+import kotlinx.coroutines.launch
+
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = AppRepository(application)
+    
+    private val _appsList = MutableLiveData<List<AppInfo>>()
+    val appsList: LiveData<List<AppInfo>> = _appsList
+    
+    private val _filteredAppsList = MutableLiveData<List<AppInfo>>()
+    val filteredAppsList: LiveData<List<AppInfo>> = _filteredAppsList
+    
+    private val _isLoading = MutableLiveData<Boolean>()
+    val isLoading: LiveData<Boolean> = _isLoading
+    
+    private val _error = MutableLiveData<String>()
+    val error: LiveData<String> = _error
+    
+    private var currentFilterType: AppInfo.AppType? = null
+    private var currentSearchQuery: String = ""
+    
+    /**
+     * Load all installed applications
+     */
+    fun loadApps() {
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val apps = repository.getAllApps().sortedBy { it.appName }
+                _appsList.value = apps
+                applyFilters()
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _error.value = "Error loading apps: ${e.message}"
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Filter apps by type (system, user, admin, disabled)
+     */
+    fun filterByType(type: AppInfo.AppType?) {
+        currentFilterType = type
+        applyFilters()
+    }
+    
+    /**
+     * Filter apps by search query
+     */
+    fun filterByQuery(query: String) {
+        currentSearchQuery = query
+        applyFilters()
+    }
+    
+    /**
+     * Apply current filters to the apps list
+     */
+    private fun applyFilters() {
+        val apps = _appsList.value ?: return
+        
+        val filteredByType = if (currentFilterType == null) {
+            apps
+        } else {
+            apps.filter { it.getAppType() == currentFilterType }
+        }
+        
+        val filteredBySearch = if (currentSearchQuery.isBlank()) {
+            filteredByType
+        } else {
+            filteredByType.filter { 
+                it.appName.contains(currentSearchQuery, ignoreCase = true) || 
+                it.packageName.contains(currentSearchQuery, ignoreCase = true)
+            }
+        }
+        
+        _filteredAppsList.value = filteredBySearch
+    }
+    
+    /**
+     * Uninstall an application
+     */
+    fun uninstallApp(packageName: String) {
+        repository.uninstallPackage(packageName)
+    }
+    
+    /**
+     * Disable an application
+     */
+    fun disableApp(packageName: String): Boolean {
+        return repository.disablePackage(packageName)
+    }
+    
+    /**
+     * Enable a disabled application
+     */
+    fun enableApp(packageName: String): Boolean {
+        return repository.enablePackage(packageName)
+    }
+    
+    /**
+     * Check if our app has device admin privileges
+     */
+    fun isDeviceAdminActive(): Boolean {
+        return repository.isDeviceAdminActive()
+    }
+    
+    /**
+     * Format file size to readable format
+     */
+    fun formatSize(size: Long): String {
+        return repository.formatSize(size)
+    }
+}package com.debloater.viewmodel
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import com.debloater.model.AppInfo
+import com.debloater.repository.AppRepository
+import kotlinx.coroutines.launch
+
+class AppDetailsViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = AppRepository(application)
+    
+    private val _appInfo = MutableLiveData<AppInfo>()
+    val appInfo: LiveData<AppInfo> = _appInfo
+    
+    private val _isLoading = MutableLiveData<Boolean>()
+    val isLoading: LiveData<Boolean> = _isLoading
+    
+    private val _error = MutableLiveData<String>()
+    val error: LiveData<String> = _error
+    
+    /**
+     * Load details for a specific app
+     */
+    fun loadAppDetails(packageName: String) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val app = repository.getAppDetails(packageName)
+                if (app != null) {
+                    _appInfo.value = app
+                } else {
+                    _error.value = "App not found"
+                }
+            } catch (e: Exception) {
+                _error.value = "Error loading app details: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Uninstall the app
+     */
+    fun uninstallApp() {
+        val packageName = _appInfo.value?.packageName ?: return
+        repository.uninstallPackage(packageName)
+    }
+    
+    /**
+     * Disable the app
+     */
+    fun disableApp(): Boolean {
+        val packageName = _appInfo.value?.packageName ?: return false
+        return repository.disablePackage(packageName)
+    }
+    
+    /**
+     * Enable the app
+     */
+    fun enableApp(): Boolean {
+        val packageName = _appInfo.value?.packageName ?: return false
+        return repository.enablePackage(packageName)
+    }
+    
+    /**
+     * Format app size to human-readable string
+     */
+    fun formatSize(size: Long): String {
+        return repository.formatSize(size)
+    }
+    
+    /**
+     * Check if our app has device admin privileges
+     */
+    fun isDeviceAdminActive(): Boolean {
+        return repository.isDeviceAdminActive()
+    }
+}mkdir -p AndroidDebloaterApp/app/src/main/java/com/debloater/adapterpackage com.debloater.adapter
+
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import com.debloater.R
+import com.debloater.model.AppInfo
+
+class AppAdapter(
+    private val context: Context,
+    private val onUninstallClick: (AppInfo) -> Unit,
+    private val onDisableClick: (AppInfo) -> Unit,
+    private val onDetailsClick: (AppInfo) -> Unit
+) : ListAdapter<AppInfo, AppAdapter.AppViewHolder>(APP_COMPARATOR) {
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_app, parent, false)
+        return AppViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
+        val app = getItem(position)
+        holder.bind(app)
+    }
+
+    inner class AppViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val appIcon: ImageView = itemView.findViewById(R.id.app_icon)
+        private val appName: TextView = itemView.findViewById(R.id.app_name)
+        private val appPackage: TextView = itemView.findViewById(R.id.app_package)
+        private val appVersion: TextView = itemView.findViewById(R.id.app_version)
+        private val appType: TextView = itemView.findViewById(R.id.app_type)
+        private val btnUninstall: Button = itemView.findViewById(R.id.btn_uninstall)
+        private val btnDisable: Button = itemView.findViewById(R.id.btn_disable)
+        private val btnDetails: Button = itemView.findViewById(R.id.btn_details)
+
+        fun bind(app: AppInfo) {
+            appIcon.setImageDrawable(app.icon)
+            appName.text = app.appName
+            appPackage.text = app.packageName
+            appVersion.text = "v${app.versionName}"
+            
+            // Set app type tag
+            val appTypeText = when (app.getAppType()) {
+                AppInfo.AppType.SYSTEM -> "System App"
+                AppInfo.AppType.USER -> "User App"
+                AppInfo.AppType.ADMIN -> "Admin App"
+                AppInfo.AppType.DISABLED -> "Disabled App"
+            }
+            appType.text = appTypeText
+            
+            // Set button states based on app type
+            if (app.isAdminApp) {
+                btnUninstall.isEnabled = false
+                btnDisable.isEnabled = false
+            } else {
+                btnUninstall.isEnabled = true
+                btnDisable.isEnabled = true
+            }
+            
+            // Set "Disable" or "Enable" button text
+            if (app.isEnabled) {
+                btnDisable.text = context.getString(R.string.disable)
+            } else {
+                btnDisable.text = context.getString(R.string.enable)
+            }
+            
+            // Set click listeners
+            btnUninstall.setOnClickListener { onUninstallClick(app) }
+            btnDisable.setOnClickListener { onDisableClick(app) }
+            btnDetails.setOnClickListener { onDetailsClick(app) }
+        }
+    }
+
+    companion object {
+        private val APP_COMPARATOR = object : DiffUtil.ItemCallback<AppInfo>() {
+            override fun areItemsTheSame(oldItem: AppInfo, newItem: AppInfo): Boolean {
+                return oldItem.packageName == newItem.packageName
+            }
+
+            override fun areContentsTheSame(oldItem: AppInfo, newItem: AppInfo): Boolean {
+                return oldItem == newItem
+            }
+        }
+    }
+}package com.debloater.adapter
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
+import com.debloater.R
+
+class PermissionAdapter : RecyclerView.Adapter<PermissionAdapter.PermissionViewHolder>() {
+
+    private var permissions: List<String> = emptyList()
+
+    fun setPermissions(permissions: List<String>) {
+        this.permissions = permissions
+        notifyDataSetChanged()
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PermissionViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_permission, parent, false)
+        return PermissionViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: PermissionViewHolder, position: Int) {
+        val permission = permissions[position]
+        holder.bind(permission)
+    }
+
+    override fun getItemCount(): Int = permissions.size
+
+    inner class PermissionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val permissionIcon: ImageView = itemView.findViewById(R.id.permission_icon)
+        private val permissionName: TextView = itemView.findViewById(R.id.permission_name)
+
+        fun bind(permission: String) {
+            permissionName.text = permission
+            
+            // Set appropriate icon based on permission type
+            // In a real app, we would set different icons for different permission types
+            permissionIcon.setImageResource(android.R.drawable.ic_menu_info_details)
+        }
+    }
+}package com.debloater
+
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.debloater.adapter.AppAdapter
+import com.debloater.model.AppInfo
+import com.debloater.viewmodel.MainViewModel
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.textfield.TextInputEditText
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var viewModel: MainViewModel
+    private lateinit var appAdapter: AppAdapter
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var searchEditText: TextInputEditText
+    private lateinit var tabLayout: TabLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout
+    private lateinit var loadingLayout: View
+    
+    private val DEVICE_ADMIN_REQUEST_CODE = 100
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        
+        // Set up toolbar
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.title = getString(R.string.app_name)
+        
+        // Initialize view model
+        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
+        
+        // Initialize views
+        recyclerView = findViewById(R.id.recycler_view)
+        searchEditText = findViewById(R.id.search_edit_text)
+        tabLayout = findViewById(R.id.tab_layout)
+        swipeRefresh = findViewById(R.id.swipe_refresh)
+        loadingLayout = findViewById(R.id.loading_layout)
+        
+        // Set up recycler view
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        appAdapter = AppAdapter(
+            this,
+            onUninstallClick = { app -> onUninstallApp(app) },
+            onDisableClick = { app -> onDisableApp(app) },
+            onDetailsClick = { app -> onOpenAppDetails(app) }
+        )
+        recyclerView.adapter = appAdapter
+        
+        // Set up search
+        searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                viewModel.filterByQuery(s.toString())
+            }
+        })
+        
+        // Set up tab layout
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                when (tab?.position) {
+                    0 -> viewModel.filterByType(null) // All apps
+                    1 -> viewModel.filterByType(AppInfo.AppType.SYSTEM) // System apps
+                    2 -> viewModel.filterByType(AppInfo.AppType.USER) // User apps
+                    3 -> viewModel.filterByType(AppInfo.AppType.ADMIN) // Admin apps
+                    4 -> viewModel.filterByType(AppInfo.AppType.DISABLED) // Disabled apps
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+        
+        // Set up swipe refresh
+        swipeRefresh.setOnRefreshListener {
+            loadApps()
+        }
+        
+        // Observe LiveData
+        viewModel.filteredAppsList.observe(this) { apps ->
+            appAdapter.submitList(apps)
+        }
+        
+        viewModel.isLoading.observe(this) { isLoading ->
+            if (isLoading) {
+                loadingLayout.visibility = View.VISIBLE
+            } else {
+                loadingLayout.visibility = View.GONE
+                swipeRefresh.isRefreshing = false
+            }
+        }
+        
+        viewModel.error.observe(this) { error ->
+            if (error.isNotEmpty()) {
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+            }
+        }
+        
+        // Request device admin privileges if not already granted
+        if (!viewModel.isDeviceAdminActive()) {
+            requestDeviceAdminPrivileges()
+        }
+        
+        // Load apps
+        loadApps()
+    }
+    
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+    
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_refresh -> {
+                loadApps()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == DEVICE_ADMIN_REQUEST_CODE) {
+            // Refresh the app list after device admin request
+            loadApps()
+        }
+    }
+    
+    private fun loadApps() {
+        viewModel.loadApps()
+    }
+    
+    private fun onUninstallApp(app: AppInfo) {
+        if (app.isSystemApp) {
+            showSystemAppWarningDialog(app)
+        } else {
+            showConfirmUninstallDialog(app)
+        }
+    }
+    
+    private fun onDisableApp(app: AppInfo) {
+        if (app.isEnabled) {
+            showConfirmDisableDialog(app)
+        } else {
+            if (viewModel.enableApp(app.packageName)) {
+                Toast.makeText(this, getString(R.string.success_enable), Toast.LENGTH_SHORT).show()
+                // Reload apps to reflect changes
+                loadApps()
+            } else {
+                Toast.makeText(this, getString(R.string.error_disable), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun onOpenAppDetails(app: AppInfo) {
+        val intent = Intent(this, AppDetailsActivity::class.java).apply {
+            putExtra("package_name", app.packageName)
+        }
+        startActivity(intent)
+    }
+    
+    private fun showSystemAppWarningDialog(app: AppInfo) {
+        AlertDialog.Builder(this)
+            .setTitle(app.appName)
+            .setMessage(getString(R.string.warning_system_app))
+            .setPositiveButton(getString(R.string.uninstall)) { _, _ ->
+                showConfirmUninstallDialog(app)
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+    
+    private fun showConfirmUninstallDialog(app: AppInfo) {
+        AlertDialog.Builder(this)
+            .setTitle(app.appName)
+            .setMessage(getString(R.string.confirm_uninstall))
+            .setPositiveButton(getString(R.string.uninstall)) { _, _ ->
+                viewModel.uninstallApp(app.packageName)
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+    
+    private fun showConfirmDisableDialog(app: AppInfo) {
+        AlertDialog.Builder(this)
+            .setTitle(app.appName)
+            .setMessage(getString(R.string.confirm_disable))
+            .setPositiveButton(getString(R.string.disable)) { _, _ ->
+                if (viewModel.disableApp(app.packageName)) {
+                    Toast.makeText(this, getString(R.string.success_disable), Toast.LENGTH_SHORT).show()
+                    // Reload apps to reflect changes
+                    loadApps()
+                } else {
+                    Toast.makeText(this, getString(R.string.error_disable), Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+    
+    private fun requestDeviceAdminPrivileges() {
+        val deviceAdmin = ComponentName(this, DeviceAdminReceiver::class.java)
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, deviceAdmin)
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.device_admin_description))
+        }
+        startActivityForResult(intent, DEVICE_ADMIN_REQUEST_CODE)
+    }
+}<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_refresh"
+        android:icon="@android:drawable/ic_menu_rotate"
+        android:title="Refresh"
+        app:showAsAction="ifRoom" />
+</menu>package com.debloater
+
+import android.os.Bundle
+import android.view.MenuItem
+import android.view.View
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.debloater.adapter.PermissionAdapter
+import com.debloater.viewmodel.AppDetailsViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+class AppDetailsActivity : AppCompatActivity() {
+
+    private lateinit var viewModel: AppDetailsViewModel
+    private lateinit var permissionAdapter: PermissionAdapter
+    
+    private lateinit var appIcon: ImageView
+    private lateinit var appName: TextView
+    private lateinit var appPackage: TextView
+    private lateinit var appType: TextView
+    private lateinit var appVersion: TextView
+    private lateinit var appInstallDate: TextView
+    private lateinit var appSize: TextView
+    private lateinit var warningText: TextView
+    private lateinit var btnUninstall: Button
+    private lateinit var btnDisable: Button
+    private lateinit var permissionsRecyclerView: RecyclerView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_app_details)
+        
+        // Set up toolbar
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = getString(R.string.app_info)
+        
+        // Initialize view model
+        viewModel = ViewModelProvider(this).get(AppDetailsViewModel::class.java)
+        
+        // Initialize views
+        appIcon = findViewById(R.id.app_icon)
+        appName = findViewById(R.id.app_name)
+        appPackage = findViewById(R.id.app_package)
+        appType = findViewById(R.id.app_type)
+        appVersion = findViewById(R.id.app_version)
+        appInstallDate = findViewById(R.id.app_install_date)
+        appSize = findViewById(R.id.app_size)
+        warningText = findViewById(R.id.warning_text)
+        btnUninstall = findViewById(R.id.btn_uninstall)
+        btnDisable = findViewById(R.id.btn_disable)
+        permissionsRecyclerView = findViewById(R.id.permissions_recycler_view)
+        
+        // Set up permissions recycler view
+        permissionsRecyclerView.layoutManager = LinearLayoutManager(this)
+        permissionAdapter = PermissionAdapter()
+        permissionsRecyclerView.adapter = permissionAdapter
+        
+        // Set up button listeners
+        btnUninstall.setOnClickListener {
+            showConfirmUninstallDialog()
+        }
+        
+        btnDisable.setOnClickListener {
+            val app = viewModel.appInfo.value ?: return@setOnClickListener
+            if (app.isEnabled) {
+                showConfirmDisableDialog()
+            } else {
+                if (viewModel.enableApp()) {
+                    Toast.makeText(this, getString(R.string.success_enable), Toast.LENGTH_SHORT).show()
+                    finish() // Return to the main activity to refresh the list
+                } else {
+                    Toast.makeText(this, getString(R.string.error_disable), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        // Observe LiveData
+        viewModel.appInfo.observe(this) { app ->
+            appIcon.setImageDrawable(app.icon)
+            appName.text = app.appName
+            appPackage.text = app.packageName
+            
+            // Set app type tag
+            val appTypeText = when {
+                app.isAdminApp -> "Admin App"
+                !app.isEnabled -> "Disabled App"
+                app.isSystemApp -> "System App"
+                else -> "User App"
+            }
+            appType.text = appTypeText
+            
+            // Set version, install date, and size
+            appVersion.text = "v${app.versionName} (${app.versionCode})"
+            
+            val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+            appInstallDate.text = dateFormat.format(app.installDate)
+            
+            appSize.text = viewModel.formatSize(app.appSize)
+            
+            // Set button states and text
+            if (app.isAdminApp) {
+                btnUninstall.isEnabled = false
+                btnDisable.isEnabled = false
+                warningText.visibility = View.VISIBLE
+                warningText.text = getString(R.string.warning_admin_app)
+            } else if (app.isSystemApp) {
+                warningText.visibility = View.VISIBLE
+                warningText.text = getString(R.string.warning_system_app)
+            } else {
+                warningText.visibility = View.GONE
+            }
+            
+            if (app.isEnabled) {
+                btnDisable.text = getString(R.string.disable)
+            } else {
+                btnDisable.text = getString(R.string.enable)
+            }
+            
+            // Set permissions
+            permissionAdapter.setPermissions(app.permissions)
+        }
+        
+        viewModel.error.observe(this) { error ->
+            if (error.isNotEmpty()) {
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                finish()
+            }
+        }
+        
+        // Load app details
+        val packageName = intent.getStringExtra("package_name")
+        if (packageName != null) {
+            viewModel.loadAppDetails(packageName)
+        } else {
+            Toast.makeText(this, "Invalid package name", Toast.LENGTH_SHORT).show()
+            finish()
+        }
+    }
+    
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            android.R.id.home -> {
+                onBackPressed()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+    
+    private fun showConfirmUninstallDialog() {
+        val app = viewModel.appInfo.value ?: return
+        
+        AlertDialog.Builder(this)
+            .setTitle(app.appName)
+            .setMessage(getString(R.string.confirm_uninstall))
+            .setPositiveButton(getString(R.string.uninstall)) { _, _ ->
+                viewModel.uninstallApp()
+                finish() // Return to the main activity
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+    
+    private fun showConfirmDisableDialog() {
+        val app = viewModel.appInfo.value ?: return
+        
+        AlertDialog.Builder(this)
+            .setTitle(app.appName)
+            .setMessage(getString(R.string.confirm_disable))
+            .setPositiveButton(getString(R.string.disable)) { _, _ ->
+                if (viewModel.disableApp()) {
+                    Toast.makeText(this, getString(R.string.success_disable), Toast.LENGTH_SHORT).show()
+                    finish() // Return to the main activity to refresh the list
+                } else {
+                    Toast.makeText(this, getString(R.string.error_disable), Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+}
